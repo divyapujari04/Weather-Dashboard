@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Weather Dashboard</title>
+    <!-- Load Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'inter': ['Inter', 'sans-serif'],
+                    },
+                },
+            },
+        }
+    </script>
+    <!-- Use Inter font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-sky-100 to-blue-200 min-h-screen font-inter">
+
+    <div class="w-full min-h-screen flex flex-col">
+        <!-- Header Bar -->
+        <header class="bg-slate-800 text-white p-4 shadow-md sticky top-0 z-10">
+            <div class="container mx-auto flex items-center justify-between gap-4">
+                <!-- Left Spacer -->
+                <div class="flex-1 min-w-0">
+                    <!-- Can be empty or have other items -->
+                </div>
+                
+                <!-- Title: Centered -->
+                <h1 class="text-xl font-semibold text-center whitespace-nowrap">Real-Time Weather Dashboard</h1>
+                
+                <!-- Form: On right -->
+                <div class="flex-1 min-w-0 flex justify-end">
+                    <form id="search-form" class="flex rounded-md overflow-hidden shadow-sm w-full max-w-xs sm:max-w-sm">
+                        <input 
+                            type="text" 
+                            id="city-input"
+                            placeholder="Enter City Name" 
+                            class="px-3 py-2 text-gray-900 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset w-full min-w-0"
+                        >
+                        <button type="submit" class="bg-blue-600 px-3 py-2 text-white hover:bg-blue-700 transition-colors">
+                            <!-- Search Icon SVG -->
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
+                            </svg>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </header>
+
+        <!-- Weather Display Area -->
+        <main id="weather-display" class="flex-grow p-8 pt-12 text-center flex items-center justify-center">
+            
+            <div class="w-full max-w-4xl">
+                <!-- Initial Welcome Message -->
+                <div id="welcome-message" class="bg-white/80 backdrop-blur-md shadow-lg rounded-2xl p-8 border border-white/30">
+                    <h2 class="text-2xl font-semibold text-gray-700">Welcome to the Weather Dashboard</h2>
+                    <p class="text-gray-500 mt-2">Enter a city name in the search bar above to get started.</p>
+                </div>
+
+                <!-- Loading State -->
+                <div id="loading" class="hidden bg-white/80 backdrop-blur-md shadow-lg rounded-2xl p-8 border border-white/30">
+                    <p class="text-gray-600 text-lg">Loading weather data...</p>
+                </div>
+                
+                <!-- Error Message -->
+                <div id="error-message" class="hidden p-6 bg-red-100/80 backdrop-blur-md text-red-700 rounded-2xl shadow-lg border border-red-200">
+                    <p class="font-semibold">Could not find weather data for that city. Please try again.</p>
+                </div>
+
+                <!-- API Key Warning (empty key) -->
+                <div id="api-key-warning" class="hidden p-6 bg-yellow-100/80 backdrop-blur-md text-yellow-800 rounded-2xl shadow-lg border border-yellow-200">
+                    <p class="font-semibold">Please add your OpenWeatherMap API key to the JavaScript code to use this app.</p>
+                </div>
+
+                <!-- API Error Message (401) -->
+                <div id="api-error" class="hidden p-6 bg-red-100/80 backdrop-blur-md text-red-700 rounded-2xl shadow-lg border border-red-200">
+                    <p class="font-semibold">There is a problem with your API key. It might be invalid, inactive, or incorrect. Please check it and try again.</p>
+                </div>
+            </div>
+
+
+            <!-- Weather Data (Initially hidden) -->
+            <div id="weather-content" class="hidden flex flex-col items-center w-full max-w-4xl">
+                
+                <!-- This block replaces the old City, Country, Icon/Temp, and Description -->
+                <div class="w-full grid grid-cols-1 sm:grid-cols-2 gap-6 items-center mb-10">
+                    
+                    <!-- Left Column: City Info -->
+                    <div class="flex flex-col items-center sm:items-start order-2 sm:order-1">
+                        <h2 id="city-name" class="text-5xl font-bold text-slate-800 text-center sm:text-left"></h2>
+                        <p id="country-name" class="text-lg text-gray-500 mb-4"></p>
+                        <p id="weather-description" class="text-2xl text-gray-600 capitalize text-center sm:text-left"></p>
+                    </div>
+
+                    <!-- Right Column: Temp Info -->
+                    <div class="flex flex-col items-center order-1 sm:order-2">
+                        <div class="flex items-center justify-center gap-0">
+                            <img id="weather-icon" src="" alt="Weather icon" class="w-40 h-40 -mr-4">
+                            <div class="flex">
+                                <h1 id="temperature" class="text-8xl font-bold text-slate-700"></h1>
+                                <span id="temperature-unit" class="text-5xl font-light text-slate-700 mt-3 hidden">°C</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- End of new block -->
+
+
+                <!-- Details Row -->
+                <div class="w-full grid grid-cols-1 sm:grid-cols-3 gap-6">
+                    <!-- Humidity Box -->
+                    <div class="bg-white/60 backdrop-blur-md shadow-lg rounded-2xl p-6 text-center border border-white/30">
+                        <span class="text-sm text-gray-500 block font-medium">HUMIDITY</span>
+                        <span id="humidity" class="text-2xl font-semibold text-slate-700 mt-1 block"></span>
+                    </div>
+                    <!-- Wind Speed Box -->
+                    <div class="bg-white/60 backdrop-blur-md shadow-lg rounded-2xl p-6 text-center border border-white/30">
+                        <span class="text-sm text-gray-500 block font-medium">WIND SPEED</span>
+                        <span id="wind-speed" class="text-2xl font-semibold text-slate-700 mt-1 block"></span>
+                    </div>
+                    <!-- Last Updated Box -->
+                    <div class="bg-white/60 backdrop-blur-md shadow-lg rounded-2xl p-6 text-center border border-white/30">
+                        <span class="text-sm text-gray-500 block font-medium">LAST UPDATED</span>
+                        <span id="last-updated" class="text-2xl font-semibold text-slate-700 mt-1 block"></span>
+                    </div>
+                </div>
+
+                <!-- 5-Day Forecast -->
+                <div id="forecast-container" class="w-full mt-12 hidden">
+                    <h3 class="text-xl font-semibold text-slate-700 mb-4 text-left">5-Day Forecast</h3>
+                    <div id="forecast-grid" class="grid grid-cols-1 sm:grid-cols-5 gap-4">
+                        <!-- Forecast cards will be injected here by JS -->
+                    </div>
+                </div>
+
+            </div>
+
+        </main>
+    </div>
+
+    <script>
+        // --- API Configuration ---
+        const apiKey = "992a05754008528415f47fe3342cae55"; 
+
+        // --- DOM Element References ---
+        const searchForm = document.getElementById('search-form');
+        const cityInput = document.getElementById('city-input');
+        
+        const loading = document.getElementById('loading');
+        const errorMessage = document.getElementById('error-message');
+        const apiKeyWarning = document.getElementById('api-key-warning');
+        const apiError = document.getElementById('api-error'); 
+        const weatherContent = document.getElementById('weather-content');
+        const welcomeMessage = document.getElementById('welcome-message');
+
+        // Parent container for messages
+        const weatherDisplay = document.getElementById('weather-display');
+        const welcomeContainer = document.getElementById('welcome-message').parentElement;
+
+        const cityNameEl = document.getElementById('city-name');
+        const countryNameEl = document.getElementById('country-name');
+        const weatherIconEl = document.getElementById('weather-icon');
+        const temperatureEl = document.getElementById('temperature');
+        const temperatureUnit = document.getElementById('temperature-unit');
+        const weatherDescriptionEl = document.getElementById('weather-description');
+        const humidityEl = document.getElementById('humidity');
+        const windSpeedEl = document.getElementById('wind-speed');
+        const lastUpdatedEl = document.getElementById('last-updated');
+
+        // Forecast Elements
+        const forecastContainer = document.getElementById('forecast-container');
+        const forecastGrid = document.getElementById('forecast-grid');
+
+        // Country Name Converter
+        const countryNameConverter = new Intl.DisplayNames(['en'], { type: 'region' });
+
+        // --- Event Listeners ---
+        searchForm.addEventListener('submit', handleSearch);
+
+        // --- Functions ---
+        function handleSearch(event) {
+            event.preventDefault();
+            const city = cityInput.value.trim();
+            if (!apiKey) {
+                showState('api-key-warning');
+                return;
+            }
+            if (city) {
+                fetchWeather(city);
+                cityInput.value = ''; // Clear input after search
+            }
+        }
+
+        async function fetchWeather(city) {
+            showState('loading');
+            forecastContainer.classList.add('hidden'); // Hide forecast on new search
+
+            const apiUrl = `https://api.openweathermap.org/data/2.5/weather?q=${city}&units=metric&appid=${apiKey}`;
+
+            try {
+                const response = await fetch(apiUrl);
+                
+                if (response.status === 401) {
+                    showState('api-error');
+                    return; 
+                }
+                if (!response.ok) {
+                    showState('error-message'); 
+                    return; 
+                }
+
+                const data = await response.json();
+                displayWeather(data);
+                fetchForecast(city); // Fetch forecast after successful current weather
+            } catch (error) {
+                console.error("Failed to fetch weather data:", error);
+                showState('error-message');
+            }
+        }
+
+        async function fetchForecast(city) {
+            const forecastApiUrl = `https://api.openweathermap.org/data/2.5/forecast?q=${city}&units=metric&appid=${apiKey}`;
+            try {
+                const response = await fetch(forecastApiUrl);
+                if (!response.ok) {
+                    throw new Error('Forecast fetch failed');
+                }
+                const data = await response.json();
+                displayForecast(data);
+            } catch (error) {
+                console.error("Failed to fetch forecast data:", error);
+                // Don't show an error, just fail silently for the forecast
+            }
+        }
+
+        function displayWeather(data) {
+            if (data.cod === '404') {
+                showState('error-message');
+                return;
+            }
+
+            // Update DOM elements
+            cityNameEl.textContent = data.name;
+            countryNameEl.textContent = countryNameConverter.of(data.sys.country); // Convert code to full name
+            temperatureEl.textContent = Math.round(data.main.temp);
+            temperatureUnit.classList.remove('hidden'); 
+            weatherDescriptionEl.textContent = data.weather[0].description;
+            humidityEl.textContent = `${data.main.humidity}%`;
+            windSpeedEl.textContent = `${(data.wind.speed * 3.6).toFixed(1)} km/h`; 
+            lastUpdatedEl.textContent = formatTimestamp(data.dt);
+            
+            weatherIconEl.src = `https://openweathermap.org/img/wn/${data.weather[0].icon}@4x.png`;
+            weatherIconEl.alt = data.weather[0].description;
+
+            showState('weather-content');
+        }
+
+        function displayForecast(forecastData) {
+            forecastGrid.innerHTML = ''; // Clear previous forecast
+
+            const dailyData = [];
+            // Get one forecast per day (approx 24 hours apart)
+            for (let i = 7; i < forecastData.list.length; i += 8) {
+                dailyData.push(forecastData.list[i]);
+            }
+            
+            const forecastsToShow = dailyData.slice(0, 5); // Ensure we only show 5 days
+
+            forecastsToShow.forEach(day => {
+                const date = new Date(day.dt * 1000);
+                const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
+                const icon = day.weather[0].icon;
+                const temp = Math.round(day.main.temp);
+
+                const card = `
+                    <div class="bg-white/60 backdrop-blur-md shadow-lg rounded-2xl p-4 text-center border border-white/30 flex flex-col items-center">
+                        <span class="text-sm font-semibold text-slate-700">${dayName}</span>
+                        <img src="https://openweathermap.org/img/wn/${icon}@2x.png" alt="${day.weather[0].description}" class="w-16 h-16">
+                        <span class="text-lg font-bold text-slate-700">${temp}°C</span>
+                    </div>
+                `;
+                forecastGrid.innerHTML += card;
+            });
+
+            forecastContainer.classList.remove('hidden'); // Show the forecast section
+        }
+
+        function formatTimestamp(timestamp) {
+            const date = new Date(timestamp * 1000); 
+            return date.toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true
+            });
+        }
+
+        // --- UI State Function ---
+        const messageStates = [
+            'welcome-message',
+            'loading', 
+            'error-message', 
+            'api-key-warning', 
+            'api-error'
+        ];
+
+        function showState(stateToShow) {
+            if (stateToShow === 'weather-content') {
+                // Show weather content, hide message container
+                weatherContent.classList.remove('hidden');
+                welcomeContainer.classList.add('hidden');
+            } else {
+                // Show message container, hide weather content
+                weatherContent.classList.add('hidden');
+                welcomeContainer.classList.remove('hidden');
+
+                // Show the specific message
+                messageStates.forEach(stateId => {
+                    const element = document.getElementById(stateId);
+                    if (element) { 
+                        if (stateId === stateToShow) {
+                            element.classList.remove('hidden');
+                        } else {
+                            element.classList.add('hidden');
+                        }
+                    }
+                });
+            }
+        }
+
+        // --- Initial Load ---
+        if (!apiKey) {
+            showState('api-key-warning');
+        } else {
+            fetchWeather('London');
+        }
+
+    </script>
+</body>
+</html>
